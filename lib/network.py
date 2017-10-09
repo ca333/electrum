@@ -317,6 +317,9 @@ class Network(util.DaemonThread):
         for i in bitcoin.FEE_TARGETS:
             self.queue_request('blockchain.estimatefee', [i])
         self.queue_request('blockchain.relayfee', [])
+        if self.interface.ping_required():
+            params = [ELECTRUM_VERSION, PROTOCOL_VERSION]
+            self.queue_request('server.version', params, self.interface)
         for h in self.subscribed_addresses:
             self.queue_request('blockchain.scripthash.subscribe', [h])
 
@@ -616,10 +619,11 @@ class Network(util.DaemonThread):
 
     def overload_cb(self, callback):
         def cb2(x):
-            p = x.pop('params')
+            x2 = x.copy()
+            p = x2.pop('params')
             addr = self.h2addr[p[0]]
-            x['params'] = [addr]
-            callback(x)
+            x2['params'] = [addr]
+            callback(x2)
         return cb2
 
     def subscribe_to_addresses(self, addresses, callback):

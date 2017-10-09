@@ -87,8 +87,7 @@ def get_server(config):
             server.ping()
             return server
         except Exception as e:
-            print_error(e)
-            pass
+            print_error("[get_server]", e)
         if not create_time or create_time < time.time() - 1.0:
             return None
         # Sleep a bit and try again; it might have just been started
@@ -252,7 +251,7 @@ class Daemon(DaemonThread):
             path = config.get_wallet_path()
             wallet = self.wallets.get(path)
             if wallet is None:
-                return {'error': 'Wallet not open. Use "electrum daemon load_wallet"'}
+                return {'error': 'Wallet "%s" is not loaded. Use "electrum daemon load_wallet"'%os.path.basename(path) }
         else:
             wallet = None
         # arguments passed to function
@@ -260,10 +259,12 @@ class Daemon(DaemonThread):
         # decode json arguments
         args = [json_decode(i) for i in args]
         # options
-        args += list(map(lambda x: (config_options.get(x) if x in ['password', 'new_password'] else config.get(x)), cmd.options))
+        kwargs = {}
+        for x in cmd.options:
+            kwargs[x] = (config_options.get(x) if x in ['password', 'new_password'] else config.get(x))
         cmd_runner = Commands(config, wallet, self.network)
         func = getattr(cmd_runner, cmd.name)
-        result = func(*args)
+        result = func(*args, **kwargs)
         return result
 
     def run(self):
